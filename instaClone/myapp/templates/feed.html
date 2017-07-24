@@ -2,9 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>successful login</title>
+    <style>
+        body{
+            text-align: center;
+            background-color: greenyellow;
+            color: hotpink;
+            background-size: cover;
+        }
+    </style>
 </head>
 <body>
-    you have logged in successfully!
+<h1>you have logged in successfully!</h1>
+ <form method="post" action="/post/">
+        {% csrf_token %}
+        <input type="submit" class="btn-default btn" value="Create Post">
+ </form>
 </body>
 </html>
