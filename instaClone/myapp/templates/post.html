@@ -5,18 +5,6 @@
     <title>image</title>
 </head>
 <body>
-        {% for item in items %}
-        <h3>
-          Posted by: {{ post.user.username }}
-        </h3>
-        <img src="{{ post.image_url }}">
-        <span>
-          {{ post.caption }}
-        </span>
-
-        {% endfor %}
-
-
 <form method="POST" enctype="multipart/form-data">
       {% csrf_token %}
       {{ form }}

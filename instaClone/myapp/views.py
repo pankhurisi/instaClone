@@ -2,8 +2,8 @@
 from __future__ import unicode_literals
 
 from django.shortcuts import render, redirect
-from forms import SignUpForm, LoginForm, PostForm
-from models import User, SessionToken,Post
+from forms import SignUpForm, LoginForm, PostForm, LikeForm, CommentForm
+from models import User, SessionToken, Post, Like, Comment
 from django.contrib.auth.hashers import make_password,check_password
 import datetime
 from imgurpython import ImgurClient
@@ -69,7 +69,11 @@ def login_view(request):
 def feed_view(request):
     user = check_validation(request)
     if user:
-        posts = Post.objects.all().order_by('created_on')
+        posts = Post.objects.all().order_by('-created_on')
+        for post in posts:
+            existing_like = Like.objects.filter(post_id=post.id, user=user).first()
+            if existing_like:
+                post.has_liked = True
         return render(request, 'feed.html', {'posts': posts})
     else:
         return redirect('/login/')
@@ -88,7 +92,7 @@ def post_view(request):
                 post = Post(user=user, image=image, caption=caption)
                 post.save()
 
-                path = str(BASE_DIR + '//user_images//post.image.url')
+                path = str(BASE_DIR + '/' + post.image.url)
 
                 client = ImgurClient('e9d9aee5f532f88', '8d0e8bb5ef8ccd95533624535c279c687423b754')
                 post.image_url = client.upload_from_path(path, anon=True)['link']
@@ -99,6 +103,42 @@ def post_view(request):
         return render(request, 'post.html', {'form': form})
     else:
         return redirect('/login/')
+
+
+def like_view(request):
+    user = check_validation(request)
+    if user and request.method == 'POST':
+        form = LikeForm(request.POST)
+        if form.is_valid():
+            post_id = form.cleaned_data.get('post').id
+
+            existing_like = Like.objects.filter(post_id=post_id, user=user).first()
+
+            if not existing_like:
+                Like.objects.create(post_id=post_id, user=user)
+            else:
+                existing_like.delete()
+
+            return redirect('/feed/')
+
+    else:
+        return redirect('/login/')
+
+
+def comment_view(request):
+    user = check_validation(request)
+    if user and request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            post_id = form.cleaned_data.get('post').id
+            comment_text = form.cleaned_data.get('comment_text')
+            comment = Comment.objects.create(user=user, post_id=post_id, comment_text=comment_text)
+            comment.save()
+            return redirect('/feed/')
+        else:
+            return redirect('/feed/')
+    else:
+        return redirect('/login')
 
 
 # for session validation
