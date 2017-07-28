@@ -8,6 +8,10 @@ from django.contrib.auth.hashers import make_password,check_password
 import datetime
 from imgurpython import ImgurClient
 from instaClone.settings import BASE_DIR
+from Clarify import get_tags_from_image
+from sendgrid_email import send_response
+from enum import Enum
+from PIL import Image
 from django.utils import timezone
 
 
@@ -15,6 +19,7 @@ from django.utils import timezone
 
 
 def signup_view(request):
+    response_data = {}
     today = datetime.date.today()
     if request.method == "POST":
         form = SignUpForm(request.POST)
@@ -23,6 +28,12 @@ def signup_view(request):
             name = form.cleaned_data['name']
             email = form.cleaned_data['email']
             password = form.cleaned_data['password']
+
+            if len(username) < 4:
+                response_data['msg'] = 'Username should have atleast 4 characters'
+            if len(password) < 5:
+                response_data['msg'] = 'Password should have atleast 5 characters'
+
             # saving data to db
             user = User(name=name, password=make_password(password), email=email, username=username)
             user.save()
@@ -88,18 +99,41 @@ def post_view(request):
             form = PostForm(request.POST, request.FILES)
             if form.is_valid():
                 image = form.cleaned_data.get('image')
-                caption = form.cleaned_data.get('caption')
-                post = Post(user=user, image=image, caption=caption)
-                post.save()
+                main, sub = image.content_type.split('/')
+                if not (main == 'image' and sub.lower() in ['jpeg', 'pjpeg', 'png', 'jpg']):
+                    form = PostForm()
+                    message = {'message': 'Enter JPEG or PNG image', 'form': form}
+                    return render(request, 'post.html', message)
+                else:
+                    caption = form.cleaned_data.get('caption')
+                    post = Post(user=user, image=image, caption=caption)
+                    post.save()
 
-                path = str(BASE_DIR + '/' + post.image.url)
+                    path = str(BASE_DIR + '/' + post.image.url)
 
-                client = ImgurClient('e9d9aee5f532f88', '8d0e8bb5ef8ccd95533624535c279c687423b754')
-                post.image_url = client.upload_from_path(path, anon=True)['link']
-                post.save()
-                return redirect('/feed/')
-            else:
-                form = PostForm()
+                    client = ImgurClient('e9d9aee5f532f88', '8d0e8bb5ef8ccd95533624535c279c687423b754')
+                    post.image_url = client.upload_from_path(path, anon=True)['link']
+                    response_clarifai = get_tags_from_image(post.image_url)
+                    print response_clarifai
+                    arr_of_dict = response_clarifai['outputs'][0]['data']['concepts']
+                    for i in range(0, len(arr_of_dict)):
+                        keyword = arr_of_dict[i]['name']
+                        value = arr_of_dict[i]['value']
+                        if (keyword == 'Dirty' and value > 0.5):
+                            is_dirty = True
+                            send_response(post.image_url)
+
+                        elif (keyword == 'Clean' and value > 0.5):
+                            is_dirty = False
+                        else:
+                            is_dirty = False
+                    post.is_dirty = is_dirty
+
+                    post.save()
+                    return redirect('/feed/')
+        else:
+            print request.body
+            form = PostForm()
         return render(request, 'post.html', {'form': form})
     else:
         return redirect('/login/')
@@ -116,8 +150,10 @@ def like_view(request):
 
             if not existing_like:
                 Like.objects.create(post_id=post_id, user=user)
+                print 'Liked Post'
             else:
                 existing_like.delete()
+                print "Unliked"
 
             return redirect('/feed/')
 
@@ -134,11 +170,22 @@ def comment_view(request):
             comment_text = form.cleaned_data.get('comment_text')
             comment = Comment.objects.create(user=user, post_id=post_id, comment_text=comment_text)
             comment.save()
+            print 'commented'
             return redirect('/feed/')
         else:
             return redirect('/feed/')
     else:
         return redirect('/login')
+
+
+def logout_view(request):
+    user = check_validation(request)
+    if user is not None:
+        latest_session = SessionToken.objects.filter(user=user).last()
+        if latest_session:
+            latest_session.delete()
+
+    return redirect("/login/")
 
 
 # for session validation
