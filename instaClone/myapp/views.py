@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.shortcuts import render, redirect
-from forms import SignUpForm, LoginForm, PostForm, LikeForm, CommentForm
+from forms import SignUpForm, LoginForm, PostForm, LikeForm, CommentForm, UpvoteForm, SearchForm
 from models import User, SessionToken, Post, Like, Comment
 from django.contrib.auth.hashers import make_password,check_password
 import datetime
@@ -10,8 +10,6 @@ from imgurpython import ImgurClient
 from instaClone.settings import BASE_DIR
 from Clarify import get_tags_from_image
 from sendgrid_email import send_response
-from enum import Enum
-from PIL import Image
 from django.utils import timezone
 
 
@@ -119,11 +117,11 @@ def post_view(request):
                     for i in range(0, len(arr_of_dict)):
                         keyword = arr_of_dict[i]['name']
                         value = arr_of_dict[i]['value']
-                        if (keyword == 'Dirty' and value > 0.5):
+                        if keyword == 'Dirty' and value > 0.5:
                             is_dirty = True
                             send_response(post.image_url)
 
-                        elif (keyword == 'Clean' and value > 0.5):
+                        elif keyword == 'Clean' and value > 0.5:
                             is_dirty = False
                         else:
                             is_dirty = False
@@ -186,6 +184,54 @@ def logout_view(request):
             latest_session.delete()
 
     return redirect("/login/")
+
+
+def upvote_view(request):
+    user = check_validation(request)
+    comment = None
+    print "upvote view"
+    if user and request.method == 'POST':
+
+        form = UpvoteForm(request.POST)
+        if form.is_valid():
+            print form.cleaned_data
+
+            comment_id = int(form.cleaned_data.get('id'))
+
+            comment = Comment.objects.filter(id=comment_id).first()
+            print "no upvote yet"
+
+            if comment is not None:
+                # print ' unliking post'
+                print "upvoted"
+                comment.upvote_num += 1
+                comment.save()
+                print comment.upvote_num
+            else:
+                print 'some error!'
+                # liked_msg = 'Unliked!'
+
+        return redirect('/feed/')
+    else:
+        return redirect('/login/')
+
+
+def query_based_search_view(request):
+
+    user = check_validation(request)
+    if user:
+        if request.method == "POST":
+            search_form = SearchForm(request.POST)
+            if search_form.is_valid():
+                print 'valid search'
+                username_query = search_form.cleaned_data.get('search_query')
+                user_with_query = User.objects.filter(username=username_query).first()
+                posts = Post.objects.filter(user=user_with_query)
+                return render(request, 'feed.html', {'posts': posts})
+            else:
+                return redirect('/feed/')
+    else:
+        return redirect('/login/')
 
 
 # for session validation

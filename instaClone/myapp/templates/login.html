@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <title>Login page</title>
     <style>
+         {% load staticfiles %}
         body{
             text-align: center;
-            background-color: greenyellow;
+            background: url('{% static 'images/images.jpeg' %}');
             background-size: cover;
             color: hotpink;
         }
@@ -16,12 +17,12 @@
 <form method="post">
 {% csrf_token %}
 
-      <div>
+      <div class="form-group">
           <label for="username">Username: </label>
           <input id="username" type="text" name="username" value={{ username }}>
       </div>
 
-      <div>
+      <div class="form-group">
           <label for="password">Password: </label>
           <input id="password" type="password" name="password" value={{ password }}>
       </div>

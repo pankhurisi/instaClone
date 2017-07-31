@@ -13,11 +13,14 @@ class User(models.Model):
     name = models.CharField(max_length=120, default="Ananymous")
     username = models.CharField(max_length=120, default="Ananymous")
     password = models.CharField(max_length=40, default="Ananymous")
+    # updated only when the creation takes place
     create_on = models.DateTimeField(auto_now_add=True)
+    # updated every time there's a change
     updated_on = models.DateTimeField(auto_now=True)
 
 
 class SessionToken(models.Model):
+    # userid is taken as foreign key
     user = models.ForeignKey(User)
     session_token = models.CharField(max_length=255)
     created_on = models.DateTimeField(auto_now_add=True)
@@ -29,6 +32,7 @@ class SessionToken(models.Model):
 
 class Post(models.Model):
     user = models.ForeignKey(User)
+    #the folder where image is saved
     image = models.FileField(upload_to='user_images')
     image_url = models.CharField(max_length=255)
     caption = models.CharField(max_length=240)
@@ -55,6 +59,8 @@ class Like(models.Model):
 class Comment(models.Model):
     user = models.ForeignKey(User)
     post = models.ForeignKey(Post)
+    # one upvote is for each comment
     comment_text = models.CharField(max_length=555)
+    upvote_number = models.IntegerField(default=0)
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now=True)

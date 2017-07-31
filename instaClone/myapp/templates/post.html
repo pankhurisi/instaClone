@@ -7,11 +7,14 @@
 <body>
 <h4>{{ message }} </h4>
         <br>
+<div class="container centercon borders">
 <form method="POST" enctype="multipart/form-data">
       {% csrf_token %}
       {{ form }}
+    <div class="container-fluid">
       <input type="submit" class="btn btn-default" value="Add a picture">
+    </div>
    </form>
-
+</div>
 </body>
 </html>

@@ -26,28 +26,28 @@
     </div>
     <div>
 
-        <form method="post">
+        <form id="hide" method="post">
         {% csrf_token %}
 
-            <div>
+            <div class="form-group">
 
                 <label for="username">Username: </label>
                 <input id="username" type="text" name="username" value={{ username }}>
 
             </div>
-            <div>
+            <div class="form-group">
 
                 <label for="name">Name: </label>
                 <input id="name" type="text" name="name" value={{ name }}>
 
             </div>
-            <div>
+            <div class="form-group">
 
                 <label for="email">Email: </label>
                 <input id="email" type="text" name="email" value={{ email }} >
 
             </div>
-            <div>
+            <div class="form-group">
 
                 <label for="password">Password: </label>
                 <input id="password" type="password" name="password" value={{ password }}>

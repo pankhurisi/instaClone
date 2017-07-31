@@ -29,4 +29,12 @@ class LikeForm(forms.ModelForm):
 class CommentForm(forms.ModelForm):
   class Meta:
     model = Comment
-    fields = ['comment_text', 'post']
+    fields = ['comment_text', 'post', 'id']
+
+
+class UpvoteForm(forms.Form):
+    id = forms.IntegerField()
+
+
+class SearchForm(forms.Form):
+    search_query = forms.CharField();
