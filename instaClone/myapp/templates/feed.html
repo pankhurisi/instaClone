@@ -24,12 +24,21 @@
     </style>
 </head>
 <body>
-<h1>you have logged in successfully!</h1>
- <form method="post" action="/post/">
-        {% csrf_token %}
-        <input type="text" name="searchquery" class='' placeholder="Search by name">
-        <input type="submit" class="btn-default btn" value="Create Post">
- </form>
+<h1>You have logged in successfully!</h1>
+ <div class="container">
+
+    <form action="/searchfilter/" method="POST">
+    {% csrf_token %}
+    <input type="text" name="searchquery" class='' placeholder="Search by name">
+    <input type="submit" class="btn btn-default" value="Search">
+
+</form>
+     </div>
+     <form method="POST" action="/post/">
+                {% csrf_token %}
+         <input type="submit" class="btn btn-default" value="Add post">
+     </form>
+</div>
      <form method="POST" action="/logout/">
                 {% csrf_token %}
          <input type="submit" class="btn btn-default" value="Logout">

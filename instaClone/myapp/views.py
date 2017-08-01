@@ -10,8 +10,14 @@ from imgurpython import ImgurClient
 from instaClone.settings import BASE_DIR
 from Clarify import get_tags_from_image
 from sendgrid_email import send_response
+import sendgrid
 from django.utils import timezone
 
+# dummy key
+SEND_GRID_KEY ='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'
+
+
+sg_client = sendgrid.SendGridAPIClient(apikey=SEND_GRID_KEY)
 
 # Create your views here.
 
@@ -32,9 +38,47 @@ def signup_view(request):
             if len(password) < 5:
                 response_data['msg'] = 'Password should have atleast 5 characters'
 
+            # to check if user with the same username or email already exists
+            users = User.objects.all()
+            for post in users:
+                existing_user = User.objects.filter(username=username).first()
+                if existing_user:
+                    print 'User exists!'
+                    response_data['msg'] = 'Username already exists! '
+                    return render(request, 'index.html', response_data)
+
             # saving data to db
             user = User(name=name, password=make_password(password), email=email, username=username)
             user.save()
+            # to send email when signed up
+            msg_payload = {
+                "personalizations": [
+                    {
+                        "to": [
+                            {
+                                "email": email
+                            }
+                        ],
+                        "subject": 'Welcome to Swacchbharat!'
+                    }
+                ],
+                "from": {
+                    "email": "pankhurisingh@mrei.ac.in",
+                    "name": 'SwacchbharatAdmin'
+                },
+                "content": [
+                    {
+                        "type": "text/html",
+                        "value": '<h1>Welcome to Swacchbharat</h1><br>'
+                                 '<br> help the country get clean by supporting this initiaitive. <br> <br>'
+                                 '<h2><a href="swacchbharat.com"> Let\'s get started</a></h2>'
+
+                    }
+                ]
+            }
+            response = sg_client.client.mail.send.post(request_body=msg_payload)
+            print response
+
             return render(request, 'success.html', {'name': name})
         # return redirect ('login/')
         else:
@@ -67,6 +111,8 @@ def login_view(request):
                     response_data['message'] = 'Incorrect Password! enter again'
             else:
                 response_data['message'] = 'Incorrect Username! enter again'
+        else:
+            response_data['message'] = 'please make sure the fields are not empty!'
 
     elif request.method == "GET":
         form = LoginForm()
@@ -114,9 +160,9 @@ def post_view(request):
                     response_clarifai = get_tags_from_image(post.image_url)
                     print response_clarifai
                     arr_of_dict = response_clarifai['outputs'][0]['data']['concepts']
-                    for i in range(0, len(arr_of_dict)):
-                        keyword = arr_of_dict[i]['name']
-                        value = arr_of_dict[i]['value']
+                    for k in range(0, len(arr_of_dict)):
+                        keyword = arr_of_dict[k]['name']
+                        value = arr_of_dict[k]['value']
                         if keyword == 'Dirty' and value > 0.5:
                             is_dirty = True
                             send_response(post.image_url)
@@ -243,3 +289,34 @@ def check_validation(request):
             return session.user
     else:
         return None
+
+
+# email when someone comments on post
+def comment_email(commentor, to_email):
+    msg_payload = {
+        "personalizations": [
+            {
+                "to": [
+                    {
+                        "email": to_email
+                    }
+                ],
+                "subject": 'Your post got comment!'
+            }
+        ],
+        "from": {
+            "email": "pankhurisingh@mrei.ac.in",
+            "name": 'SwacchbharatAdmin'
+        },
+        "content": [
+            {
+                "type": "text/html",
+                "value": '<h1>Swacchbharat</h1><br><br> ' + commentor +
+                         ' just commented on your post. <br><br><h2><a href="swacchbharat.com">Have a look </a></h2>'
+
+            }
+        ]
+    }
+    response = sg_client.client.mail.send.post(request_body=msg_payload)
+    print response
+
