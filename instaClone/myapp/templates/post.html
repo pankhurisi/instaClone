@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>image</title>
+<style>
+    {% load staticfiles %}
+        body{
+            text-align: center;
+            background: url('{% static 'images/swachh-bharat1.jpg' %}')no-repeat center center fixed;
+            color: black;
+            background-size: cover;
+        }
+</style>
 </head>
 <body>
 <h4>{{ message }} </h4>

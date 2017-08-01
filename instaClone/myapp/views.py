@@ -204,9 +204,9 @@ def upvote_view(request):
             if comment is not None:
                 # print ' unliking post'
                 print "upvoted"
-                comment.upvote_num += 1
+                comment.upvote_number += 1
                 comment.save()
-                print comment.upvote_num
+                print comment.upvote_number
             else:
                 print 'some error!'
                 # liked_msg = 'Unliked!'
@@ -225,7 +225,7 @@ def query_based_search_view(request):
             if search_form.is_valid():
                 print 'valid search'
                 username_query = search_form.cleaned_data.get('search_query')
-                user_with_query = User.objects.filter(username=username_query).first()
+                user_with_query = User.objects.filter(username=username_query).first();
                 posts = Post.objects.filter(user=user_with_query)
                 return render(request, 'feed.html', {'posts': posts})
             else:
