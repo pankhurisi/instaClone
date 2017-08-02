@@ -166,7 +166,6 @@ def post_view(request):
                         if keyword == 'Dirty' and value > 0.5:
                             is_dirty = True
                             send_response(post.image_url)
-
                         elif keyword == 'Clean' and value > 0.5:
                             is_dirty = False
                         else:
