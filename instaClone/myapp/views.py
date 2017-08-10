@@ -9,7 +9,6 @@ import datetime
 from imgurpython import ImgurClient
 from instaClone.settings import BASE_DIR
 from Clarify import get_tags_from_image
-from sendgrid_email import send_response
 import sendgrid
 from django.utils import timezone
 
@@ -20,6 +19,8 @@ SEND_GRID_KEY ='SG.Vwu3y_FtQPSFSPuc4tT9Hg.Ofm8YUTZEU2E3ADXWRTgsoYNVR58haMgqqnMf0
 sg_client = sendgrid.SendGridAPIClient(apikey=SEND_GRID_KEY)
 
 # Create your views here.
+
+# Signup form Handler
 
 
 def signup_view(request):
@@ -35,8 +36,15 @@ def signup_view(request):
 
             if len(username) < 4:
                 response_data['msg'] = 'Username should have atleast 4 characters'
+                response_data['email'] = email
+                response_data['name'] = name
+                return render(request, 'index.html', response_data)
             if len(password) < 5:
                 response_data['msg'] = 'Password should have atleast 5 characters'
+                response_data['email'] = email
+                response_data['name'] = name
+                response_data['username'] = username
+                return render(request, 'index.html', response_data)
 
             # to check if user with the same username or email already exists
             users = User.objects.all()
@@ -89,6 +97,7 @@ def signup_view(request):
     return render(request, 'index.html', {'today': today,'form': form})
 
 
+# Login form handler
 def login_view(request):
     response_data = {}
     if request.method == "POST":
@@ -121,6 +130,7 @@ def login_view(request):
     return render(request, 'login.html', response_data)
 
 
+# Feeds page upon Login
 def feed_view(request):
     user = check_validation(request)
     if user:
@@ -134,6 +144,7 @@ def feed_view(request):
         return redirect('/login/')
 
 
+# Handing create post button request
 def post_view(request):
     user = check_validation(request)
     if user:
@@ -146,6 +157,7 @@ def post_view(request):
                 main, sub = image.content_type.split('/')
                 if not (main == 'image' and sub.lower() in ['jpeg', 'pjpeg', 'png', 'jpg']):
                     form = PostForm()
+                    # Printing appropriate message when something other than image is uploaded
                     message = {'message': 'Enter JPEG or PNG image', 'form': form}
                     return render(request, 'post.html', message)
                 else:
@@ -155,8 +167,10 @@ def post_view(request):
 
                     path = str(BASE_DIR + '/' + post.image.url)
 
+                    # Saving image to Imgur cloud
                     client = ImgurClient('e9d9aee5f532f88', '8d0e8bb5ef8ccd95533624535c279c687423b754')
                     post.image_url = client.upload_from_path(path, anon=True)['link']
+                    # Calling the function to get keywords using Clarifai
                     response_clarifai = get_tags_from_image(post.image_url)
                     print response_clarifai
                     arr_of_dict = response_clarifai['outputs'][0]['data']['concepts']
@@ -165,7 +179,35 @@ def post_view(request):
                         value = arr_of_dict[k]['value']
                         if keyword == 'Dirty' and value > 0.5:
                             is_dirty = True
-                            send_response(post.image_url)
+                            # If image is dirty then we send email using Sendgrid API to respective authority
+
+                            msg_payload = {
+                                "personalizations": [
+                                    {
+                                        "to": [
+                                            {
+                                                "email": 'pankhurisingh19ju@gmail.com'  # authority
+                                            }
+                                        ],
+                                        "subject": 'Dirty area!'
+                                    }
+                                ],
+                                "from": {
+                                    "email": "pankhurisingh@mrei.ac.in",
+                                    "name": 'SwacchbharatAdmin'
+                                },
+                                "content": [
+                                    {
+                                        "type": "text/html",
+                                        "value": "<h1>Swacch Bharat</h1><br><br>  <img src =" + post.image_url + " <br>"
+
+                                    }
+                                ]
+                            }
+                            response = sg_client.client.mail.send.post(request_body=msg_payload)
+                            print response
+
+
                         elif keyword == 'Clean' and value > 0.5:
                             is_dirty = False
                         else:
@@ -182,6 +224,7 @@ def post_view(request):
         return redirect('/login/')
 
 
+# Like button click request
 def like_view(request):
     user = check_validation(request)
     if user and request.method == 'POST':
@@ -193,8 +236,11 @@ def like_view(request):
 
             if not existing_like:
                 Like.objects.create(post_id=post_id, user=user)
+                post = Post.objects.filter(id=post_id).first()
+                like_email(user.username, post.user.email)
                 print 'Liked Post'
             else:
+                # If already liked, deleting the like
                 existing_like.delete()
                 print "Unliked"
 
@@ -204,6 +250,7 @@ def like_view(request):
         return redirect('/login/')
 
 
+# Comment Handler
 def comment_view(request):
     user = check_validation(request)
     if user and request.method == 'POST':
@@ -211,9 +258,13 @@ def comment_view(request):
         if form.is_valid():
             post_id = form.cleaned_data.get('post').id
             comment_text = form.cleaned_data.get('comment_text')
+            # Updating the comment-model upon getting comment text
             comment = Comment.objects.create(user=user, post_id=post_id, comment_text=comment_text)
+            post = Post.objects.filter(id=post_id).first()
             comment.save()
+            # Calling function to email about the comment
             print 'commented'
+            comment_email(user.username, post.user.email)
             return redirect('/feed/')
         else:
             return redirect('/feed/')
@@ -221,6 +272,7 @@ def comment_view(request):
         return redirect('/login')
 
 
+# Logout Button Handler
 def logout_view(request):
     user = check_validation(request)
     if user is not None:
@@ -231,6 +283,7 @@ def logout_view(request):
     return redirect("/login/")
 
 
+# upvote Button Handler
 def upvote_view(request):
     user = check_validation(request)
     comment = None
@@ -261,15 +314,17 @@ def upvote_view(request):
         return redirect('/login/')
 
 
+# query_based_search Handler
 def query_based_search_view(request):
 
     user = check_validation(request)
     if user:
-        if request.method == "POST":
-            search_form = SearchForm(request.POST)
+        if request.method == "GET":
+            search_form = SearchForm(request.GET)
             if search_form.is_valid():
                 print 'valid search'
                 username_query = search_form.cleaned_data.get('search_query')
+                print username_query
                 user_with_query = User.objects.filter(username=username_query).first();
                 posts = Post.objects.filter(user=user_with_query)
                 return render(request, 'feed.html', {'posts': posts})
@@ -318,4 +373,34 @@ def comment_email(commentor, to_email):
     }
     response = sg_client.client.mail.send.post(request_body=msg_payload)
     print response
+
+
+# Sending email on like
+def like_email(liker, to_email):
+    msg_payload = {
+        "personalizations": [
+            {
+                "to": [
+                    {
+                        "email": to_email
+                    }
+                ],
+                "subject": 'Someone reacted to your post!'
+            }
+        ],
+        "from": {
+            "email": "pankhurisingh@mrei.ac.in",
+            "name": 'SwacchbharatAdmin'
+        },
+        "content": [
+            {
+                "type": "text/html",
+                "value": '<h1>Swacch Bharat</h1><br><br> ' + liker + ' just commented on your post. <br>'
+
+            }
+        ]
+    }
+    response = sg_client.client.mail.send.post(request_body=msg_payload)
+    print response
+
 

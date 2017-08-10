@@ -23,6 +23,7 @@ class SessionToken(models.Model):
     # userid is taken as foreign key
     user = models.ForeignKey(User)
     session_token = models.CharField(max_length=255)
+    last_request_on = models.DateTimeField(auto_now=True)
     created_on = models.DateTimeField(auto_now_add=True)
     is_valid = models.BooleanField(default=True)
 
@@ -38,6 +39,7 @@ class Post(models.Model):
     caption = models.CharField(max_length=240)
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now=True)
+    is_dirty = models.BooleanField(default=False)
     liked_by_user = False
 
     @property
